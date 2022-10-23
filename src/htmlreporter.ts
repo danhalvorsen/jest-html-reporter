@@ -1,326 +1,347 @@
-import { AggregatedResult, TestResult } from "@jest/test-result";
-import { Config } from "@jest/types";
-import dateformat from "dateformat";
-import fs from "fs";
-import mkdirp from "mkdirp";
-import path from "path";
+import builder from 'xmlbuilder'
+import { PerformanceTestResults } from './types/index.d'
+import { Config } from '@jest/types'
+import dateformat from 'dateformat'
+import fs from 'fs'
+import mkdirp from 'mkdirp'
+import path from 'path'
 import {
   IJestHTMLReporterConfig,
   IJestHTMLReporterConfigOptions,
   IJestHTMLReporterConsole,
   JestHTMLReporterProps,
   JestHTMLReporterSortType,
-} from "src/types";
-import stripAnsi from "strip-ansi";
-import xmlbuilder, { XMLElement } from "xmlbuilder";
+} from 'src/types'
+import stripAnsi from 'strip-ansi'
+import sorting from './sorting'
+import { AggregatedResult, TestResult } from '@jest/test-result'
 
-import sorting from "./sorting";
+// My Stuff
+import {
+  suiteInfoPerformanceReportDiv,
+  testPerformanceDataDiv as createPerformanceDataElementOnParent,
+} from './htmlreport.performance.template'
 
 class HTMLReporter {
-  public testData: AggregatedResult;
-  public consoleLogList: IJestHTMLReporterConsole[];
-  public jestConfig: Config.GlobalConfig;
-  public config: IJestHTMLReporterConfig;
+  public testData: AggregatedResult
+  public consoleLogList: IJestHTMLReporterConsole[]
+  public jestConfig: Config.GlobalConfig
+  public config: IJestHTMLReporterConfig
+  public performanceTestData: PerformanceTestResults
 
   constructor(data: JestHTMLReporterProps) {
-    this.testData = data.testData;
-    this.jestConfig = data.jestConfig;
-    this.consoleLogList = data.consoleLogs;
-    this.setupConfig(data.options);
+    this.testData = data.testData
+    this.jestConfig = data.jestConfig
+    this.consoleLogList = data.consoleLogs
+    this.setupConfig(data.options)
+    this.performanceTestData = data.performanceTestResults
   }
 
   public async generate() {
     try {
-      const report = await this.renderTestReport();
+      const report = await this.renderTestReport()
       const outputPath = this.replaceRootDirInPath(
-        this.jestConfig ? this.jestConfig.rootDir : "",
-        this.getConfigValue("outputPath") as string
-      );
+        this.jestConfig ? this.jestConfig.rootDir : '',
+        this.getConfigValue('outputPath') as string,
+      )
 
-      await mkdirp(path.dirname(outputPath));
-      if (this.getConfigValue("append") as boolean) {
-        await this.appendToFile(outputPath, report.toString());
+      await mkdirp(path.dirname(outputPath))
+      if (this.getConfigValue('append') as boolean) {
+        await this.appendToFile(outputPath, report.toString())
       } else {
-        fs.writeFileSync(outputPath, report.toString());
+        fs.writeFileSync(outputPath, report.toString())
       }
 
-      this.logMessage("success", `Report generated (${outputPath})`);
-      return report;
+      this.logMessage('success', `Report generated (${outputPath})`)
+      return report
     } catch (e) {
-      this.logMessage("error", e);
+      this.logMessage('error', e)
     }
   }
 
   public async renderTestReport() {
     // Generate the content of the test report
-    const reportContent = await this.renderTestReportContent();
+    const reportContent = await this.renderTestReportContent()
 
     // --
 
     // Boilerplate Option
-    if (!!this.getConfigValue("boilerplate")) {
+    if (!!this.getConfigValue('boilerplate')) {
       const boilerplatePath = this.replaceRootDirInPath(
-        this.jestConfig ? this.jestConfig.rootDir : "",
-        this.getConfigValue("boilerplate") as string
-      );
+        this.jestConfig ? this.jestConfig.rootDir : '',
+        this.getConfigValue('boilerplate') as string,
+      )
 
-      const boilerplateContent = fs.readFileSync(boilerplatePath, "utf8");
+      const boilerplateContent = fs.readFileSync(boilerplatePath, 'utf8')
       return boilerplateContent.replace(
-        "{jesthtmlreporter-content}",
-        reportContent && reportContent.toString()
-      );
+        '{jesthtmlreporter-content}',
+        reportContent && reportContent.toString(),
+      )
     }
 
     // --
 
     // Create HTML and apply reporter content
-    const report = xmlbuilder.create({ html: {} });
-    const headTag = report.ele("head");
-    headTag.ele("meta", { charset: "utf-8" });
-    headTag.ele("title", {}, this.getConfigValue("pageTitle"));
+    const report = builder.create({ html: {} })
+    const headTag = report.ele('head')
+    headTag.ele('meta', { charset: 'utf-8' })
+    headTag.ele('title', {}, this.getConfigValue('pageTitle'))
 
     // Default to the currently set theme
     let stylesheetFilePath: string = path.join(
       __dirname,
-      `../style/${this.getConfigValue("theme")}.css`
-    );
+      `../style/${this.getConfigValue('theme')}.css`,
+    )
     // Overriding stylesheet
-    if (this.getConfigValue("styleOverridePath")) {
-      stylesheetFilePath = this.getConfigValue("styleOverridePath") as string;
+    if (this.getConfigValue('styleOverridePath')) {
+      stylesheetFilePath = this.getConfigValue('styleOverridePath') as string
     }
     // Decide whether to inline the CSS or not
     const inlineCSS: boolean =
-      !this.getConfigValue("useCssFile") &&
-      !!!this.getConfigValue("styleOverridePath");
+      !this.getConfigValue('useCssFile') &&
+      !!!this.getConfigValue('styleOverridePath')
 
     if (inlineCSS) {
-      const stylesheetContent = fs.readFileSync(stylesheetFilePath, "utf8");
-      headTag.raw(`<style type="text/css">${stylesheetContent}</style>`);
+      const stylesheetContent = fs.readFileSync(stylesheetFilePath, 'utf8')
+      headTag.raw(`<style type="text/css">${stylesheetContent}</style>`)
     } else {
-      headTag.ele("link", {
-        rel: "stylesheet",
-        type: "text/css",
+      headTag.ele('link', {
+        rel: 'stylesheet',
+        type: 'text/css',
         href: stylesheetFilePath,
-      });
+      })
     }
 
-    const reportBody = report.ele("body");
+    const reportBody = report.ele('body')
     // Add the test report to the body
     if (reportContent) {
-      reportBody.raw(reportContent.toString());
+      reportBody.raw(reportContent.toString())
     }
     // Add any given custom script to the end of the body
-    if (!!this.getConfigValue("customScriptPath")) {
+    if (!!this.getConfigValue('customScriptPath')) {
       reportBody.raw(
-        `<script src="${this.getConfigValue("customScriptPath")}"></script>`
-      );
+        `<script src="${this.getConfigValue('customScriptPath')}"></script>`,
+      )
     }
-    return report;
+    return report
   }
 
-  public renderTestSuiteInfo(parent: XMLElement, suite: TestResult) {
-    const suiteInfo = parent.ele("div", { class: "suite-info" });
+  public renderTestSuiteInfo(
+    parent: builder.XMLElement,
+    suite: TestResult,
+    performanceTestResults: PerformanceTestResults,
+  ) {
+    const suiteInfo = parent.ele('div', { class: 'suite-info' })
+    // Suite-info-performance-report
+    suiteInfoPerformanceReportDiv(suiteInfo, suite, performanceTestResults)
+    suiteInfo.ele('div', { class: 'suite-info-performance-report' })
+
     // Suite Path
-    suiteInfo.ele("div", { class: "suite-path" }, suite.testFilePath);
+    suiteInfo.ele('div', { class: 'suite-path' }, suite.testFilePath)
     // Suite execution time
-    const executionTime = (suite.perfStats.end - suite.perfStats.start) / 1000;
+    const executionTime = (suite.perfStats.end - suite.perfStats.start) / 1000
     suiteInfo.ele(
-      "div",
+      'div',
       {
         class: `suite-time${
           executionTime >
-          (this.getConfigValue("executionTimeWarningThreshold") as number)
-            ? " warn"
-            : ""
+          (this.getConfigValue('executionTimeWarningThreshold') as number)
+            ? ' warn'
+            : ''
         }`,
       },
-      `${executionTime}s`
-    );
+      `${executionTime}s`,
+    )
   }
 
-  public renderSuiteFailure(parent: XMLElement, suite: TestResult, i: number) {
-    const suiteContainer = parent.ele("div", {
+  public renderSuiteFailure(
+    parent: builder.XMLElement,
+    suite: TestResult,
+    i: number,
+    performanceTestResults: PerformanceTestResults,
+  ) {
+    const suiteContainer = parent.ele('div', {
       id: `suite-${i + 1}`,
-      class: "suite-container",
-    });
+      class: 'suite-container',
+    })
 
     // Suite Information
-    this.renderTestSuiteInfo(suiteContainer, suite);
+    this.renderTestSuiteInfo(suiteContainer, suite, performanceTestResults)
 
     // Test Container
-    const suiteTests = suiteContainer.ele("div", {
-      class: "suite-tests",
-    });
+    const suiteTests = suiteContainer.ele('div', {
+      class: 'suite-tests',
+    })
 
-    const testResult = suiteTests.ele("div", {
-      class: "test-result failed",
-    });
+    const testResult = suiteTests.ele('div', {
+      class: 'test-result failed',
+    })
 
     const failureMsgDiv = testResult.ele(
-      "div",
+      'div',
       {
-        class: "failureMessages suiteFailure",
+        class: 'failureMessages suiteFailure',
       },
-      " "
-    );
+      ' ',
+    )
     failureMsgDiv.ele(
-      "pre",
-      { class: "failureMsg" },
-      this.sanitizeOutput(suite.failureMessage)
-    );
+      'pre',
+      { class: 'failureMsg' },
+      this.sanitizeOutput(suite.failureMessage),
+    )
   }
 
-  public async renderTestReportContent() {
+  public async renderTestReportContent(): Promise<builder.XMLElement> {
     try {
       if (!this.testData || Object.entries(this.testData).length === 0) {
-        throw Error("No test data provided");
+        throw Error('No test data provided')
       }
 
       // HTML Body
-      const reportBody: XMLElement = xmlbuilder.begin().element("div", {
-        id: "jesthtml-content",
-      });
+      const reportBody: builder.XMLElement = builder.begin().element('div', {
+        id: 'jesthtml-content',
+      })
 
       /**
        * Page Header
        */
-      const header = reportBody.ele("header");
+      const header = reportBody.ele('header')
       // Page Title
-      header.ele("h1", { id: "title" }, this.getConfigValue("pageTitle"));
+      header.ele('h1', { id: 'title' }, this.getConfigValue('pageTitle'))
 
       // Logo
-      const logo = this.getConfigValue("logo");
+      const logo = this.getConfigValue('logo')
       if (logo) {
-        header.ele("img", { id: "logo", src: logo });
+        header.ele('img', { id: 'logo', src: logo })
       }
 
       /**
        * Meta-Data
        */
-      const metaDataContainer = reportBody.ele("div", {
-        id: "metadata-container",
-      });
+      const metaDataContainer = reportBody.ele('div', {
+        id: 'metadata-container',
+      })
       // Timestamp
       if (this.testData.startTime && !isNaN(this.testData.startTime)) {
-        const timestamp = new Date(this.testData.startTime);
+        const timestamp = new Date(this.testData.startTime)
         if (timestamp) {
           const formattedTimestamp = dateformat(
             timestamp,
-            this.getConfigValue("dateFormat") as string
-          );
+            this.getConfigValue('dateFormat') as string,
+          )
           metaDataContainer.ele(
-            "div",
-            { id: "timestamp" },
-            `Started: ${formattedTimestamp}`
-          );
+            'div',
+            { id: 'timestamp' },
+            `Started: ${formattedTimestamp}`,
+          )
         }
       }
 
       // Summary
-      const summaryContainer = metaDataContainer.ele("div", { id: "summary" });
+      const summaryContainer = metaDataContainer.ele('div', { id: 'summary' })
       // Suite Summary
-      const suiteSummary = summaryContainer.ele("div", { id: "suite-summary" });
+      const suiteSummary = summaryContainer.ele('div', { id: 'suite-summary' })
       suiteSummary.ele(
-        "div",
-        { class: "summary-total" },
-        `Suites (${this.testData.numTotalTestSuites})`
-      );
+        'div',
+        { class: 'summary-total' },
+        `Suites (${this.testData.numTotalTestSuites})`,
+      )
       suiteSummary.ele(
-        "div",
+        'div',
         {
           class: `summary-passed${
-            this.testData.numPassedTestSuites === 0 ? " summary-empty" : ""
+            this.testData.numPassedTestSuites === 0 ? ' summary-empty' : ''
           }`,
         },
-        `${this.testData.numPassedTestSuites} passed`
-      );
+        `${this.testData.numPassedTestSuites} passed`,
+      )
       suiteSummary.ele(
-        "div",
+        'div',
         {
           class: `summary-failed${
-            this.testData.numFailedTestSuites === 0 ? " summary-empty" : ""
+            this.testData.numFailedTestSuites === 0 ? ' summary-empty' : ''
           }`,
         },
-        `${this.testData.numFailedTestSuites} failed`
-      );
+        `${this.testData.numFailedTestSuites} failed`,
+      )
       suiteSummary.ele(
-        "div",
+        'div',
         {
           class: `summary-pending${
-            this.testData.numPendingTestSuites === 0 ? " summary-empty" : ""
+            this.testData.numPendingTestSuites === 0 ? ' summary-empty' : ''
           }`,
         },
-        `${this.testData.numPendingTestSuites} pending`
-      );
+        `${this.testData.numPendingTestSuites} pending`,
+      )
 
       if (
         this.testData.snapshot &&
         this.testData.snapshot.unchecked > 0 &&
-        this.getConfigValue("includeObsoleteSnapshots")
+        this.getConfigValue('includeObsoleteSnapshots')
       ) {
         suiteSummary.ele(
-          "div",
+          'div',
           {
-            class: "summary-obsolete-snapshots",
+            class: 'summary-obsolete-snapshots',
           },
-          `${this.testData.snapshot.unchecked} obsolete snapshots`
-        );
+          `${this.testData.snapshot.unchecked} obsolete snapshots`,
+        )
       }
       // Test Summary
-      const testSummary = summaryContainer.ele("div", { id: "test-summary" });
+      const testSummary = summaryContainer.ele('div', { id: 'test-summary' })
       testSummary.ele(
-        "div",
-        { class: "summary-total" },
-        `Tests (${this.testData.numTotalTests})`
-      );
+        'div',
+        { class: 'summary-total' },
+        `Tests (${this.testData.numTotalTests})`,
+      )
       testSummary.ele(
-        "div",
+        'div',
         {
           class: `summary-passed${
-            this.testData.numPassedTests === 0 ? " summary-empty" : ""
+            this.testData.numPassedTests === 0 ? ' summary-empty' : ''
           }`,
         },
-        `${this.testData.numPassedTests} passed`
-      );
+        `${this.testData.numPassedTests} passed`,
+      )
       testSummary.ele(
-        "div",
+        'div',
         {
           class: `summary-failed${
-            this.testData.numFailedTests === 0 ? " summary-empty" : ""
+            this.testData.numFailedTests === 0 ? ' summary-empty' : ''
           }`,
         },
-        `${this.testData.numFailedTests} failed`
-      );
+        `${this.testData.numFailedTests} failed`,
+      )
       testSummary.ele(
-        "div",
+        'div',
         {
           class: `summary-pending${
-            this.testData.numPendingTests === 0 ? " summary-empty" : ""
+            this.testData.numPendingTests === 0 ? ' summary-empty' : ''
           }`,
         },
-        `${this.testData.numPendingTests} pending`
-      );
+        `${this.testData.numPendingTests} pending`,
+      )
 
       /**
        * Apply any given sorting method to the test results
        */
       const sortedTestResults = sorting(
         this.testData.testResults,
-        this.getConfigValue("sort") as JestHTMLReporterSortType
-      );
+        this.getConfigValue('sort') as JestHTMLReporterSortType,
+      )
 
       /**
        * Setup ignored test result statuses
        */
       const statusIgnoreFilter = this.getConfigValue(
-        "statusIgnoreFilter"
-      ) as string;
-      let ignoredStatuses: string[] = [];
+        'statusIgnoreFilter',
+      ) as string
+      let ignoredStatuses: string[] = []
       if (statusIgnoreFilter) {
         ignoredStatuses = statusIgnoreFilter
-          .replace(/\s/g, "")
+          .replace(/\s/g, '')
           .toLowerCase()
-          .split(",");
+          .split(',')
       }
 
       /**
@@ -332,171 +353,185 @@ class HTMLReporter {
           if (!suite.testResults || suite.testResults.length <= 0) {
             if (
               suite.failureMessage &&
-              this.getConfigValue("includeSuiteFailure")
+              this.getConfigValue('includeSuiteFailure')
             ) {
-              this.renderSuiteFailure(reportBody, suite, i);
+              const performanceTestResult = this.renderSuiteFailure(
+                reportBody,
+                suite,
+                i,
+                this.performanceTestData,
+              )
             }
-            return;
+            return
           }
 
-          const suiteContainer = reportBody.ele("div", {
+          const suiteContainer = reportBody.ele('div', {
             id: `suite-${i + 1}`,
-            class: "suite-container",
-          });
+            class: 'suite-container',
+          })
 
           // Suite Information
-          this.renderTestSuiteInfo(suiteContainer, suite);
+          this.renderTestSuiteInfo(
+            suiteContainer,
+            suite,
+            this.performanceTestData,
+          )
 
           // Test Container
-          const suiteTests = suiteContainer.ele("div", {
-            class: "suite-tests",
-          });
+          const suiteTests = suiteContainer.ele('div', {
+            class: 'suite-tests',
+          })
 
           // Test Results
           suite.testResults
             // Filter out the test results with statuses that equals the statusIgnoreFilter
             .filter((s) => !ignoredStatuses.includes(s.status))
             .forEach(async (test) => {
-              const testResult = suiteTests.ele("div", {
+              const testResult = suiteTests.ele('div', {
                 class: `test-result ${test.status}`,
-              });
+              })
 
               // Test Info
-              const testInfo = testResult.ele("div", { class: "test-info" });
+              const testInfo = testResult.ele('div', { class: 'test-info' })
               // Suite Name
               testInfo.ele(
-                "div",
-                { class: "test-suitename" },
+                'div',
+                { class: 'test-suitename' },
                 test.ancestorTitles && test.ancestorTitles.length > 0
-                  ? test.ancestorTitles.join(" > ")
-                  : " "
-              );
+                  ? test.ancestorTitles.join(' > ')
+                  : ' ',
+              )
               // Test Title
-              testInfo.ele("div", { class: "test-title" }, test.title);
+              testInfo.ele('div', { class: 'test-title' }, test.title)
               // Test Status
-              testInfo.ele("div", { class: "test-status" }, test.status);
+              testInfo.ele('div', { class: 'test-status' }, test.status)
               // Test Duration
               testInfo.ele(
-                "div",
-                { class: "test-duration" },
-                `${test.duration / 1000}s`
-              );
+                'div',
+                { class: 'test-duration' },
+                `${test.duration / 1000}s`,
+              )
+              createPerformanceDataElementOnParent(
+                testInfo,
+                suite,
+                this.performanceTestData,
+              )
 
               // Test Failure Messages
               if (
                 test.failureMessages &&
                 test.failureMessages.length > 0 &&
-                this.getConfigValue("includeFailureMsg")
+                this.getConfigValue('includeFailureMsg')
               ) {
                 const failureMsgDiv = testResult.ele(
-                  "div",
+                  'div',
                   {
-                    class: "failureMessages",
+                    class: 'failureMessages',
                   },
-                  " "
-                );
+                  ' ',
+                )
                 test.failureMessages.forEach((failureMsg) => {
                   failureMsgDiv.ele(
-                    "pre",
-                    { class: "failureMsg" },
-                    this.sanitizeOutput(failureMsg)
-                  );
-                });
+                    'pre',
+                    { class: 'failureMsg' },
+                    this.sanitizeOutput(failureMsg),
+                  )
+                })
               }
-            });
+            })
 
           // All console.logs caught during the test run
           if (
             this.consoleLogList &&
             this.consoleLogList.length > 0 &&
-            this.getConfigValue("includeConsoleLog")
+            this.getConfigValue('includeConsoleLog')
           ) {
-            this.renderSuiteConsoleLogs(suite, suiteContainer);
+            this.renderSuiteConsoleLogs(suite, suiteContainer)
           }
 
           if (
             suite.snapshot &&
             suite.snapshot.unchecked > 0 &&
-            this.getConfigValue("includeObsoleteSnapshots")
+            this.getConfigValue('includeObsoleteSnapshots')
           ) {
-            this.renderSuiteObsoleteSnapshots(suiteContainer, suite);
+            this.renderSuiteObsoleteSnapshots(suiteContainer, suite)
           }
-        });
+        })
       }
 
-      return reportBody;
+      return reportBody
     } catch (e) {
-      this.logMessage("error", e);
+      this.logMessage('error', e)
     }
   }
 
   public renderSuiteConsoleLogs(
     suite: TestResult,
-    suiteContainer: xmlbuilder.XMLElement
+    suiteContainer: builder.XMLElement,
   ) {
     // Filter out the logs for this test file path
     const filteredConsoleLogs = this.consoleLogList.find(
-      (logs) => logs.filePath === suite.testFilePath
-    );
+      (logs) => logs.filePath === suite.testFilePath,
+    )
     if (filteredConsoleLogs && filteredConsoleLogs.logs.length > 0) {
       // Console Log Container
-      const consoleLogContainer = suiteContainer.ele("div", {
-        class: "suite-consolelog",
-      });
+      const consoleLogContainer = suiteContainer.ele('div', {
+        class: 'suite-consolelog',
+      })
       // Console Log Header
       consoleLogContainer.ele(
-        "div",
-        { class: "suite-consolelog-header" },
-        "Console Log"
-      );
+        'div',
+        { class: 'suite-consolelog-header' },
+        'Console Log',
+      )
       // Apply the logs to the body
       filteredConsoleLogs.logs.forEach((log) => {
-        const logElement = consoleLogContainer.ele("div", {
-          class: "suite-consolelog-item",
-        });
+        const logElement = consoleLogContainer.ele('div', {
+          class: 'suite-consolelog-item',
+        })
         logElement.ele(
-          "pre",
-          { class: "suite-consolelog-item-origin" },
-          this.sanitizeOutput(log.origin)
-        );
+          'pre',
+          { class: 'suite-consolelog-item-origin' },
+          this.sanitizeOutput(log.origin),
+        )
         logElement.ele(
-          "pre",
-          { class: "suite-consolelog-item-message" },
-          this.sanitizeOutput(log.message)
-        );
-      });
+          'pre',
+          { class: 'suite-consolelog-item-message' },
+          this.sanitizeOutput(log.message),
+        )
+      })
     }
   }
 
   public renderSuiteObsoleteSnapshots(
-    suiteContainer: xmlbuilder.XMLElement,
-    suite: TestResult
+    suiteContainer: builder.XMLElement,
+    suite: TestResult,
   ) {
     // Obsolete snapshots Container
-    const snapshotContainer = suiteContainer.ele("div", {
-      class: "suite-obsolete-snapshots",
-    });
+    const snapshotContainer = suiteContainer.ele('div', {
+      class: 'suite-obsolete-snapshots',
+    })
     // Obsolete snapshots Header
     snapshotContainer.ele(
-      "div",
-      { class: "suite-obsolete-snapshots-header" },
-      "Obsolete snapshots"
-    );
-    const keysElement = snapshotContainer.ele("div", {
-      class: "suite-obsolete-snapshots-item",
-    });
+      'div',
+      { class: 'suite-obsolete-snapshots-header' },
+      'Obsolete snapshots',
+    )
+    const keysElement = snapshotContainer.ele('div', {
+      class: 'suite-obsolete-snapshots-item',
+    })
     keysElement.ele(
-      "pre",
-      { class: "suite-obsolete-snapshots-item-message" },
-      suite.snapshot.uncheckedKeys.join("\n")
-    );
+      'pre',
+      { class: 'suite-obsolete-snapshots-item-message' },
+      suite.snapshot.uncheckedKeys.join('\n'),
+    )
   }
 
   /**
    * Fetch and setup configuration
    */
   public setupConfig(
-    options: IJestHTMLReporterConfigOptions
+    options: IJestHTMLReporterConfigOptions,
   ): IJestHTMLReporterConfig {
     // Extract config values and make sure that the config object actually exist
     const {
@@ -517,111 +552,111 @@ class HTMLReporter {
       statusIgnoreFilter,
       styleOverridePath,
       useCssFile,
-    } = options || {};
+    } = options || {}
 
     this.config = {
       append: {
         defaultValue: false,
-        environmentVariable: "JEST_HTML_REPORTER_APPEND",
+        environmentVariable: 'JEST_HTML_REPORTER_APPEND',
         configValue: append,
       },
       boilerplate: {
         defaultValue: null,
-        environmentVariable: "JEST_HTML_REPORTER_BOILERPLATE",
+        environmentVariable: 'JEST_HTML_REPORTER_BOILERPLATE',
         configValue: boilerplate,
       },
       customScriptPath: {
         defaultValue: null,
-        environmentVariable: "JEST_HTML_REPORTER_CUSTOM_SCRIPT_PATH",
+        environmentVariable: 'JEST_HTML_REPORTER_CUSTOM_SCRIPT_PATH',
         configValue: customScriptPath,
       },
       dateFormat: {
-        defaultValue: "yyyy-mm-dd HH:MM:ss",
-        environmentVariable: "JEST_HTML_REPORTER_DATE_FORMAT",
+        defaultValue: 'yyyy-mm-dd HH:MM:ss',
+        environmentVariable: 'JEST_HTML_REPORTER_DATE_FORMAT',
         configValue: dateFormat,
       },
       executionTimeWarningThreshold: {
         defaultValue: 5,
         environmentVariable:
-          "JEST_HTML_REPORTER_EXECUTION_TIME_WARNING_THRESHOLD",
+          'JEST_HTML_REPORTER_EXECUTION_TIME_WARNING_THRESHOLD',
         configValue: executionTimeWarningThreshold,
       },
       logo: {
         defaultValue: null,
-        environmentVariable: "JEST_HTML_REPORTER_LOGO",
+        environmentVariable: 'JEST_HTML_REPORTER_LOGO',
         configValue: logo,
       },
       includeFailureMsg: {
         defaultValue: false,
-        environmentVariable: "JEST_HTML_REPORTER_INCLUDE_FAILURE_MSG",
+        environmentVariable: 'JEST_HTML_REPORTER_INCLUDE_FAILURE_MSG',
         configValue: includeFailureMsg,
       },
       includeSuiteFailure: {
         defaultValue: false,
-        environmentVariable: "JEST_HTML_REPORTER_INCLUDE_SUITE_FAILURE",
+        environmentVariable: 'JEST_HTML_REPORTER_INCLUDE_SUITE_FAILURE',
         configValue: includeSuiteFailure,
       },
       includeObsoleteSnapshots: {
         defaultValue: false,
-        environmentVariable: "JEST_HTML_REPORTER_INCLUDE_OBSOLETE_SNAPSHOTS",
+        environmentVariable: 'JEST_HTML_REPORTER_INCLUDE_OBSOLETE_SNAPSHOTS',
         configValue: includeObsoleteSnapshots,
       },
       includeConsoleLog: {
         defaultValue: false,
-        environmentVariable: "JEST_HTML_REPORTER_INCLUDE_CONSOLE_LOG",
+        environmentVariable: 'JEST_HTML_REPORTER_INCLUDE_CONSOLE_LOG',
         configValue: includeConsoleLog,
       },
       outputPath: {
-        defaultValue: path.join(process.cwd(), "test-report.html"),
-        environmentVariable: "JEST_HTML_REPORTER_OUTPUT_PATH",
+        defaultValue: path.join(process.cwd(), 'test-report.html'),
+        environmentVariable: 'JEST_HTML_REPORTER_OUTPUT_PATH',
         configValue: outputPath,
       },
       pageTitle: {
-        defaultValue: "Test Report",
-        environmentVariable: "JEST_HTML_REPORTER_PAGE_TITLE",
+        defaultValue: 'Test Report',
+        environmentVariable: 'JEST_HTML_REPORTER_PAGE_TITLE',
         configValue: pageTitle,
       },
       theme: {
-        defaultValue: "defaultTheme",
-        environmentVariable: "JEST_HTML_REPORTER_THEME",
+        defaultValue: 'defaultTheme',
+        environmentVariable: 'JEST_HTML_REPORTER_THEME',
         configValue: theme,
       },
       sort: {
         defaultValue: null,
-        environmentVariable: "JEST_HTML_REPORTER_SORT",
+        environmentVariable: 'JEST_HTML_REPORTER_SORT',
         configValue: sort,
       },
       statusIgnoreFilter: {
         defaultValue: null,
-        environmentVariable: "JEST_HTML_REPORTER_STATUS_FILTER",
+        environmentVariable: 'JEST_HTML_REPORTER_STATUS_FILTER',
         configValue: statusIgnoreFilter,
       },
       styleOverridePath: {
         defaultValue: null,
-        environmentVariable: "JEST_HTML_REPORTER_STYLE_OVERRIDE_PATH",
+        environmentVariable: 'JEST_HTML_REPORTER_STYLE_OVERRIDE_PATH',
         configValue: styleOverridePath,
       },
       useCssFile: {
         defaultValue: false,
-        environmentVariable: "JEST_HTML_REPORTER_USE_CSS_FILE",
+        environmentVariable: 'JEST_HTML_REPORTER_USE_CSS_FILE',
         configValue: useCssFile,
       },
-    };
+    }
     // Attempt to collect and assign config settings from jesthtmlreporter.config.json
     try {
       const jesthtmlreporterconfig = fs.readFileSync(
-        path.join(process.cwd(), "jesthtmlreporter.config.json"),
-        "utf8"
-      );
+        path.join(process.cwd(), 'jesthtmlreporter.config.json'),
+        'utf8',
+      )
       if (jesthtmlreporterconfig) {
-        const parsedConfig = JSON.parse(jesthtmlreporterconfig);
+        const parsedConfig = JSON.parse(jesthtmlreporterconfig)
         for (const key of Object.keys(parsedConfig)) {
           if (this.config[key as keyof IJestHTMLReporterConfig]) {
             this.config[key as keyof IJestHTMLReporterConfig].configValue =
-              parsedConfig[key];
+              parsedConfig[key]
           }
         }
-        return this.config;
+        return this.config
       }
     } catch (e) {
       /** do nothing */
@@ -629,18 +664,18 @@ class HTMLReporter {
     // If above method did not work we attempt to check package.json
     try {
       const packageJson = fs.readFileSync(
-        path.join(process.cwd(), "package.json"),
-        "utf8"
-      );
+        path.join(process.cwd(), 'package.json'),
+        'utf8',
+      )
       if (packageJson) {
-        const parsedConfig = JSON.parse(packageJson)["jest-html-reporter"];
+        const parsedConfig = JSON.parse(packageJson)['jest-html-reporter']
         for (const key of Object.keys(parsedConfig)) {
           if (this.config[key as keyof IJestHTMLReporterConfig]) {
             this.config[key as keyof IJestHTMLReporterConfig].configValue =
-              parsedConfig[key];
+              parsedConfig[key]
           }
         }
-        return this.config;
+        return this.config
       }
     } catch (e) {
       /** do nothing */
@@ -653,14 +688,14 @@ class HTMLReporter {
    * @param key
    */
   public getConfigValue(key: keyof IJestHTMLReporterConfig) {
-    const option = this.config[key];
+    const option = this.config[key]
     if (!option) {
-      return;
+      return
     }
     if (process.env[option.environmentVariable]) {
-      return process.env[option.environmentVariable];
+      return process.env[option.environmentVariable]
     }
-    return option.configValue || option.defaultValue;
+    return option.configValue || option.defaultValue
   }
 
   /**
@@ -669,31 +704,31 @@ class HTMLReporter {
    * @param content
    */
   public async appendToFile(filePath: string, content: any) {
-    let parsedContent = content;
+    let parsedContent = content
     // Check if the file exists or not
-    const fileExists = fs.existsSync(filePath);
+    const fileExists = fs.existsSync(filePath)
     // The file exists - we need to strip all unnecessary html
     if (fileExists) {
-      const fileToAppend = fs.readFileSync(filePath, "utf8");
-      const contentSearch = /<body>(.*?)<\/body>/gm.exec(content);
+      const fileToAppend = fs.readFileSync(filePath, 'utf8')
+      const contentSearch = /<body>(.*?)<\/body>/gm.exec(content)
       if (contentSearch) {
-        const [strippedContent] = contentSearch;
-        parsedContent = strippedContent;
+        const [strippedContent] = contentSearch
+        parsedContent = strippedContent
       }
       // Then we need to add the stripped content just before the </body> tag
-      let newContent = fileToAppend;
-      const closingBodyTag = /<\/body>/gm.exec(fileToAppend);
-      const indexOfClosingBodyTag = closingBodyTag ? closingBodyTag.index : 0;
+      let newContent = fileToAppend
+      const closingBodyTag = /<\/body>/gm.exec(fileToAppend)
+      const indexOfClosingBodyTag = closingBodyTag ? closingBodyTag.index : 0
 
       newContent = [
         fileToAppend.slice(0, indexOfClosingBodyTag),
         parsedContent,
         fileToAppend.slice(indexOfClosingBodyTag),
-      ].join("");
+      ].join('')
 
-      return fs.writeFileSync(filePath, newContent);
+      return fs.writeFileSync(filePath, newContent)
     }
-    return fs.appendFileSync(filePath, parsedContent);
+    return fs.appendFileSync(filePath, parsedContent)
   }
 
   /**
@@ -704,16 +739,16 @@ class HTMLReporter {
    */
   public replaceRootDirInPath(
     rootDir: Config.GlobalConfig['rootDir'],
-    filePath: Config.GlobalConfig['testPathPattern']
+    filePath: Config.GlobalConfig['testPathPattern'],
   ): string {
     if (!/^<rootDir>/.test(filePath)) {
-      return filePath;
+      return filePath
     }
 
     return path.resolve(
       rootDir,
-      path.normalize("./" + filePath.substring("<rootDir>".length))
-    );
+      path.normalize('./' + filePath.substring('<rootDir>'.length)),
+    )
   }
 
   /**
@@ -722,19 +757,19 @@ class HTMLReporter {
    * @param message
    * @param ignoreConsole
    */
-  public logMessage(type: "default" | "success" | "error", message: string) {
+  public logMessage(type: 'default' | 'success' | 'error', message: string) {
     const logTypes = {
-      default: "\x1b[37m%s\x1b[0m",
-      success: "\x1b[32m%s\x1b[0m",
-      error: "\x1b[31m%s\x1b[0m",
-    };
-    const logColor = !logTypes[type] ? logTypes.default : logTypes[type];
-    const logMsg = `jest-html-reporter >> ${message}`;
+      default: '\x1b[37m%s\x1b[0m',
+      success: '\x1b[32m%s\x1b[0m',
+      error: '\x1b[31m%s\x1b[0m',
+    }
+    const logColor = !logTypes[type] ? logTypes.default : logTypes[type]
+    const logMsg = `jest-html-reporter >> ${message}`
     // Let's log messages to the terminal only if we aren't testing this very module
     if (process.env.JEST_WORKER_ID === undefined) {
-      console.log(logColor, logMsg);
+      console.log(logColor, logMsg)
     }
-    return { logColor, logMsg }; // Return for testing purposes
+    return { logColor, logMsg } // Return for testing purposes
   }
 
   /**
@@ -744,10 +779,10 @@ class HTMLReporter {
     return stripAnsi(
       input.replace(
         /([^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFC\u{10000}-\u{10FFFF}])/gu,
-        ""
-      )
-    );
+        '',
+      ),
+    )
   }
 }
 
-export default HTMLReporter;
+export default HTMLReporter

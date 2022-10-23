@@ -1,0 +1,77 @@
+<html>
+
+<head>
+    <meta charset=\"utf-8\" />
+    <title>Test Report</title>
+    <style type=\"text/css\">html,\r\nbody {\r\n font-family: Arial, Helvetica, sans-serif;\r\n font-size: 1rem;\r\n
+        margin: 0;\r\n padding: 0;\r\n color: #333;\r\n}\r\nbody {\r\n padding: 2rem 1rem;\r\n font-size:
+        0.85rem;\r\n}\r\n#jesthtml-content {\r\n margin: 0 auto;\r\n max-width: 70rem;\r\n}\r\nheader {\r\n display:
+        flex;\r\n align-items: center;\r\n}\r\n#title {\r\n margin: 0;\r\n flex-grow: 1;\r\n}\r\n#logo {\r\n height:
+        4rem;\r\n}\r\n#timestamp {\r\n color: #777;\r\n margin-top: 0.5rem;\r\n}\r\n\r\n/** SUMMARY */\r\n#summary {\r\n
+        color: #333;\r\n margin: 2rem 0;\r\n display: flex;\r\n font-family: monospace;\r\n font-size:
+        1rem;\r\n}\r\n#summary>
+        div {\r\n  margin-right: 2rem;\r\n  background: #eee;\r\n  padding: 1rem;\r\n  min-width: 15rem;\r\n}\r\n#summary > div:last-child {\r\n  margin-right: 0;\r\n}\r\n@media only screen and (max-width: 720px) {\r\n  #summary {\r\n    flex-direction: column;\r\n  }\r\n  #summary > div {\r\n    margin-right: 0;\r\n    margin-top: 2rem;\r\n  }\r\n  #summary > div:first-child {\r\n    margin-top: 0;\r\n  }\r\n}\r\n\r\n.summary-total {\r\n  font-weight: bold;\r\n  margin-bottom: 0.5rem;\r\n}\r\n.summary-passed {\r\n  color: #4f8a10;\r\n  border-left: 0.4rem solid #4f8a10;\r\n  padding-left: 0.5rem;\r\n}\r\n.summary-failed,\r\n.summary-obsolete-snapshots {\r\n  color: #d8000c;\r\n  border-left: 0.4rem solid #d8000c;\r\n  padding-left: 0.5rem;\r\n}\r\n.summary-pending {\r\n  color: #9f6000;\r\n  border-left: 0.4rem solid #9f6000;\r\n  padding-left: 0.5rem;\r\n}\r\n.summary-empty {\r\n  color: #999;\r\n  border-left: 0.4rem solid #999;\r\n}\r\n\r\n.test-result {\r\n  padding: 1rem;\r\n  margin-bottom: 0.25rem;\r\n}\r\n.test-result:last-child {\r\n  border: 0;\r\n}\r\n.test-result.passed {\r\n  background-color: #dff2bf;\r\n  color: #4f8a10;\r\n}\r\n.test-result.failed {\r\n  background-color: #ffbaba;\r\n  color: #d8000c;\r\n}\r\n.test-result.pending {\r\n  background-color: #ffdf61;\r\n  color: #9f6000;\r\n}\r\n\r\n.test-info {\r\n  display: flex;\r\n  justify-content: space-between;\r\n}\r\n.test-suitename {\r\n  width: 20%;\r\n  text-align: left;\r\n  font-weight: bold;\r\n  word-break: break-word;\r\n}\r\n.test-title {\r\n  width: 40%;\r\n  text-align: left;\r\n  font-style: italic;\r\n}\r\n.test-status {\r\n  width: 20%;\r\n  text-align: right;\r\n}\r\n.test-duration {\r\n  width: 10%;\r\n  text-align: right;\r\n  font-size: 0.75rem;\r\n}\r\n\r\n.failureMessages {\r\n  padding: 0 1rem;\r\n  margin-top: 1rem;\r\n  border-top: 1px dashed #d8000c;\r\n}\r\n.failureMessages.suiteFailure {\r\n  border-top: none;\r\n}\r\n.failureMsg {\r\n  white-space: pre-wrap;\r\n  white-space: -moz-pre-wrap;\r\n  white-space: -pre-wrap;\r\n  white-space: -o-pre-wrap;\r\n  word-wrap: break-word;\r\n}\r\n\r\n.suite-container {\r\n  margin-bottom: 2rem;\r\n}\r\n.suite-info {\r\n  padding: 1rem;\r\n  background-color: #eee;\r\n  color: #777;\r\n  display: flex;\r\n  align-items: center;\r\n  margin-bottom: 0.25rem;\r\n}\r\n.suite-info .suite-path {\r\n  word-break: break-all;\r\n  flex-grow: 1;\r\n  font-family: monospace;\r\n  font-size: 1rem;\r\n}\r\n.suite-info .suite-time {\r\n  margin-left: 0.5rem;\r\n  padding: 0.2rem 0.3rem;\r\n  font-size: 0.75rem;\r\n}\r\n.suite-info .suite-time.warn {\r\n  background-color: #d8000c;\r\n  color: #fff;\r\n}\r\n\r\n/* CONSOLE LOGS */\r\n.suite-consolelog {\r\n  margin-bottom: 0.25rem;\r\n  padding: 1rem;\r\n  background-color: #efefef;\r\n}\r\n.suite-consolelog-header {\r\n  font-weight: bold;\r\n}\r\n.suite-consolelog-item {\r\n  padding: 0.5rem;\r\n}\r\n.suite-consolelog-item pre {\r\n  margin: 0.5rem 0;\r\n  white-space: pre-wrap;\r\n  white-space: -moz-pre-wrap;\r\n  white-space: -pre-wrap;\r\n  white-space: -o-pre-wrap;\r\n  word-wrap: break-word;\r\n}\r\n.suite-consolelog-item-origin {\r\n  color: #777;\r\n  font-weight: bold;\r\n}\r\n.suite-consolelog-item-message {\r\n  color: #000;\r\n  font-size: 1rem;\r\n  padding: 0 0.5rem;\r\n}\r\n\r\n/* OBSOLETE SNAPSHOTS */\r\n.suite-obsolete-snapshots {\r\n  margin-bottom: 0.25rem;\r\n  padding: 1rem;\r\n  background-color: #ffbaba;\r\n  color: #d8000c;\r\n}\r\n.suite-obsolete-snapshots-header {\r\n  font-weight: bold;\r\n}\r\n.suite-obsolete-snapshots-item {\r\n  padding: 0.5rem;\r\n}\r\n.suite-obsolete-snapshots-item pre {\r\n  margin: 0.5rem 0;\r\n  white-space: pre-wrap;\r\n  white-space: -moz-pre-wrap;\r\n  white-space: -pre-wrap;\r\n  white-space: -o-pre-wrap;\r\n  word-wrap: break-word;\r\n}\r\n.suite-obsolete-snapshots-item-message {\r\n  color: #000;\r\n  font-size: 1rem;\r\n  padding: 0 0.5rem;\r\n}\r\n
+    </style>
+</head>
+<body>
+    <div id=\"jesthtml-content\">
+        <header>
+            <h1 id=\"title\">Test Report</h1>
+        </header>
+        <div id=\"metadata-container\">
+            <div id=\"timestamp\">Started: 2020-03-22 16:56:41</div>
+            <div id=\"summary\">
+                <div id=\"suite-summary\">
+                    <div class=\"summary-total\">Suites (1)</div>
+                    <div class=\"summary-passed summary-empty\">0 passed</div>
+                    <div class=\"summary-failed\">1 failed</div>
+                    <div class=\"summary-pending summary-empty\">0 pending</div>
+                </div>
+                <div id=\"test-summary\">
+                    <div class=\"summary-total\">Tests (1)</div>
+                    <div class=\"summary-passed summary-empty\">0 passed</div>
+                    <div class=\"summary-failed\">1 failed</div>
+                    <div class=\"summary-pending summary-empty\">0 pending</div>
+                </div>
+            </div>
+        </div>
+        <div id=\"suite-1\" class=\"suite-container\">
+            <div class=\"suite-info\">
+                <div class=\"suite-info-performance-report\" />
+                <div class=\"suite-info-performance-report\" />
+                <div class=\"suite-path\">/mocked/path/to/test.ts</div>
+                <div class=\"suite-time\">0.158s</div>
+            </div>
+            <div class=\"suite-tests\">
+                <div class=\"test-result passed\">
+                    <div class=\"test-info\">
+                        <div class=\"test-suitename\">ancestor</div>
+                        <div class=\"test-title\">title</div>
+                        <div class=\"test-status\">passed</div>
+                        <div class=\"test-duration\">0.001s</div>
+                        <div class=\"test-performance-data\" />
+                    </div>
+                </div>
+                <div class=\"test-result failed\">
+                    <div class=\"test-info\">
+                        <div class=\"test-suitename\">ancestor</div>
+                        <div class=\"test-title\">title</div>
+                        <div class=\"test-status\">failed</div>
+                        <div class=\"test-duration\">0.002s</div>
+                        <div class=\"test-performance-data\" />
+                    </div>
+                </div>
+                <div class=\"test-result pending\">
+                    <div class=\"test-info\">
+                        <div class=\"test-suitename\">ancestor</div>
+                        <div class=\"test-title\">title</div>
+                        <div class=\"test-status\">pending</div>
+                        <div class=\"test-duration\">0.003s</div>
+                        <div class=\"test-performance-data\" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

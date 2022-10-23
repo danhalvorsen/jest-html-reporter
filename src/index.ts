@@ -1,29 +1,28 @@
-import { AggregatedResult, TestResult } from "@jest/test-result";
-import { Circus, Config } from "@jest/types";
-
-import htmlreporter from "./htmlreporter";
+import { AggregatedResult, TestResult } from '@jest/test-result'
+import { Circus, Config } from '@jest/types'
+import htmlreporter from './htmlreporter'
 import {
   IJestHTMLReporterConfigOptions,
   IJestHTMLReporterConsole,
   JestHTMLReporterProps,
-} from "./types";
+} from './types'
 
 /**
  * Setup Jest HTML Reporter and generate a report with the given data
  */
 const setupAndRun = (data: JestHTMLReporterProps) => {
-  const reporter = new htmlreporter(data);
-  return reporter.generate();
-};
+  const reporter = new htmlreporter(data)
+  return reporter.generate()
+}
 
 /**
  * The test runner function passed to Jest
  */
 function JestHtmlReporter(
   globalConfig: Config.GlobalConfig | AggregatedResult,
-  options: IJestHTMLReporterConfigOptions
+  options: IJestHTMLReporterConfigOptions,
 ): Promise<Circus.TestResult> | Config.GlobalConfig | AggregatedResult {
-  const consoleLogs: IJestHTMLReporterConsole[] = [];
+  const consoleLogs: IJestHTMLReporterConsole[] = []
 
   /**
    * If the first parameter has a property named 'testResults',
@@ -31,14 +30,14 @@ function JestHtmlReporter(
    * We then need to return the test results as they were received from Jest
    * https://facebook.github.io/jest/docs/en/configuration.html#testresultsprocessor-string
    */
-  if (Object.prototype.hasOwnProperty.call(globalConfig, "testResults")) {
-    const testData = globalConfig as AggregatedResult;
+  if (Object.prototype.hasOwnProperty.call(globalConfig, 'testResults')) {
+    const testData = globalConfig as AggregatedResult
     setupAndRun({
       testData,
       options,
-    });
+    })
     // Return the results as required by Jest
-    return testData;
+    return testData
   }
 
   /**
@@ -53,9 +52,9 @@ function JestHtmlReporter(
       consoleLogs.push({
         filePath: result.testFilePath,
         logs: result.console,
-      });
+      })
     }
-  };
+  }
 
   this.onRunComplete = (contexts: any, testData: AggregatedResult) =>
     setupAndRun({
@@ -63,7 +62,7 @@ function JestHtmlReporter(
       options,
       jestConfig: globalConfig as Config.GlobalConfig,
       consoleLogs,
-    });
+    })
 }
 
-export default JestHtmlReporter;
+export default JestHtmlReporter
